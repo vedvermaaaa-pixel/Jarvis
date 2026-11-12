@@ -1,1 +1,124 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jarvis</title>
+<style>
+  body{margin:0;min-height:100vh;background:#0b1020;color:#e6f1ff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:16px;text-align:center}
+  h1{margin:0;letter-spacing:4px;color:#4fd1ff}
+  #orb{width:150px;height:150px;border-radius:50%;border:none;background:radial-gradient(circle,#4fd1ff,#0a4d80);color:#fff;font-size:18px;box-shadow:0 0 30px #4fd1ff88;cursor:pointer}
+  #orb.on{animation:pulse 1.4s infinite;background:radial-gradient(circle,#7dffb0,#0a8050);box-shadow:0 0 40px #7dffb0aa}
+  @keyframes pulse{50%{transform:scale(1.08)}}
+  #status{opacity:.8}
+  #log{width:100%;max-width:420px;text-align:left;font-size:15px;line-height:1.6}
+  #log p{margin:6px 0;padding:8px 12px;border-radius:10px;background:#16203a}
+  #log p.me{background:#10304a}
+</style>
+</head>
+<body>
+  <h1>JARVIS</h1>
+  <button id="orb">शुरू करो</button>
+  <div id="status">बटन दबाओ, फिर बोलो: "जार्विस, समय क्या हुआ"</div>
+  <div id="log"></div>
 
+<script>
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const orb = document.getElementById('orb');
+const statusEl = document.getElementById('status');
+const logEl = document.getElementById('log');
+let rec, running = false, awake = false;
+
+function addLog(text, me){
+  const p = document.createElement('p');
+  if(me) p.className = 'me';
+  p.textContent = (me ? 'आप: ' : 'Jarvis: ') + text;
+  logEl.prepend(p);
+}
+
+function speak(text){
+  addLog(text, false);
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'hi-IN';
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+function handle(cmd){
+  const c = cmd.toLowerCase().trim();
+  if(!c){ awake = true; speak('जी, बोलिए'); return; }
+
+  if(/समय|टाइम|time|बजे/.test(c)){
+    const t = new Date().toLocaleTimeString('hi-IN',{hour:'numeric',minute:'2-digit'});
+    speak('अभी समय है ' + t);
+  } else if(/तारीख|date|आज की|दिन/.test(c)){
+    const d = new Date().toLocaleDateString('hi-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    speak('आज ' + d + ' है');
+  } else if(/youtube|यूट्यूब|यूटयूब/.test(c)){
+    speak('यूट्यूब खोल रहा हूँ');
+    window.open('https://www.youtube.com','_blank');
+  } else if(/सर्च|search|खोज|गूगल|google/.test(c)){
+    const q = c.replace(/सर्च|search|खोजो|खोज|गूगल|google|करो|पर|को/g,'').trim();
+    speak(q ? q + ' सर्च कर रहा हूँ' : 'गूगल खोल रहा हूँ');
+    window.open(q ? 'https://www.google.com/search?q=' + encodeURIComponent(q) : 'https://www.google.com','_blank');
+  } else if(/जोक|चुटकुला|joke/.test(c)){
+    speak('टीचर ने पूछा, सबसे तेज़ चीज़ क्या है? बच्चे ने कहा, छुट्टी की घंटी।');
+  } else if(/नाम|कौन हो|who are you/.test(c)){
+    speak('मैं जार्विस हूँ, आपका पर्सनल असिस्टेंट।');
+  } else if(/हेलो|हैलो|hello|hi|नमस्ते/.test(c)){
+    speak('नमस्ते! मैं आपकी क्या मदद कर सकता हूँ?');
+  } else {
+    speak('मैंने सुना: ' + cmd + '। यह कमांड अभी मुझे नहीं आती।');
+  }
+}
+
+function onResult(e){
+  for(let i = e.resultIndex; i < e.results.length; i++){
+    if(!e.results[i].isFinal) continue;
+    const said = e.results[i][0].transcript.trim();
+    addLog(said, true);
+    const m = said.match(/जार्विस|जारविस|जर्विस|jarvis|jarwis/i);
+    if(m){
+      awake = false;
+      handle(said.slice(m.index + m[0].length).replace(/^[,\s]+/,''));
+    } else if(awake){
+      awake = false;
+      handle(said);
+    }
+  }
+}
+
+function start(){
+  if(!SR){
+    statusEl.textContent = 'यह ब्राउज़र वॉइस सपोर्ट नहीं करता। Chrome इस्तेमाल करो।';
+    return;
+  }
+  rec = new SR();
+  rec.lang = 'hi-IN';
+  rec.continuous = true;
+  rec.interimResults = false;
+  rec.onresult = onResult;
+  rec.onerror = e => { statusEl.textContent = 'मिक्रोफ़ोन की अनुमति दो (' + e.error + ')'; };
+  rec.onend = () => { if(running){ try{ rec.start(); }catch(e){} } };
+  rec.start();
+  running = true;
+  orb.classList.add('on');
+  orb.textContent = 'सुन रहा हूँ';
+  statusEl.textContent = 'बोलो: "जार्विस ..."';
+  speak('जार्विस तैयार है');
+}
+
+function stop(){
+  running = false;
+  try{ rec.stop(); }catch(e){}
+  orb.classList.remove('on');
+  orb.textContent = 'शुरू करो';
+  statusEl.textContent = 'बंद है। बटन दबाओ।';
+}
+
+orb.addEventListener('click', () => running ? stop() : start());
+</script>
+</body>
+</html>
