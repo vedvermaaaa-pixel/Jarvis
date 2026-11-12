@@ -36,12 +36,26 @@ function addLog(text, me){
   logEl.prepend(p);
 }
 
+let voices = [];
+function loadVoices(){ voices = speechSynthesis.getVoices(); }
+loadVoices();
+speechSynthesis.onvoiceschanged = loadVoices;
+
+function pickVoice(){
+  const hi = voices.filter(v => /hi/i.test(v.lang));
+  return hi.find(v => /female|hia/i.test(v.name)) || hi[0] || null;
+}
+
 function speak(text){
   addLog(text, false);
   try{
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'hi-IN';
+    const v = pickVoice();
+    if(v) u.voice = v;
+    u.pitch = 1.4;
+    u.rate = 1.0;
     speechSynthesis.speak(u);
   }catch(e){}
 }
@@ -57,18 +71,18 @@ function handle(cmd){
     const d = new Date().toLocaleDateString('hi-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
     speak('आज ' + d + ' है');
   } else if(/youtube|यूट्यूब|यूटयूब/.test(c)){
-    speak('यूट्यूब खोल रहा हूँ');
+    speak('यूट्यूब खोल रही हूँ');
     window.open('https://www.youtube.com','_blank');
   } else if(/सर्च|search|खोज|गूगल|google/.test(c)){
     const q = c.replace(/सर्च|search|खोजो|खोज|गूगल|google|करो|पर|को/g,'').trim();
-    speak(q ? q + ' सर्च कर रहा हूँ' : 'गूगल खोल रहा हूँ');
+    speak(q ? q + ' सर्च कर रही हूँ' : 'गूगल खोल रही हूँ');
     window.open(q ? 'https://www.google.com/search?q=' + encodeURIComponent(q) : 'https://www.google.com','_blank');
   } else if(/जोक|चुटकुला|joke/.test(c)){
     speak('टीचर ने पूछा, सबसे तेज़ चीज़ क्या है? बच्चे ने कहा, छुट्टी की घंटी।');
   } else if(/नाम|कौन हो|who are you/.test(c)){
-    speak('मैं जार्विस हूँ, आपका पर्सनल असिस्टेंट।');
+    speak('मैं जार्विस हूँ, आपकी पर्सनल असिस्टेंट।');
   } else if(/हेलो|हैलो|hello|hi|नमस्ते/.test(c)){
-    speak('नमस्ते! मैं आपकी क्या मदद कर सकता हूँ?');
+    speak('नमस्ते! मैं आपकी क्या मदद कर सकती हूँ?');
   } else {
     speak('मैंने सुना: ' + cmd + '। यह कमांड अभी मुझे नहीं आती।');
   }
